@@ -108,8 +108,11 @@ app.delete('/api/messages/room/:room', async (req, res) => {
 
 // 3. User Management
 app.delete('/api/users/:id', async (req, res) => {
-    await User.findByIdAndDelete(req.params.id);
-    res.json({ success: true });
+    try {
+        await User.findByIdAndDelete(req.params.id);
+        io.emit('user-deleted', req.params.id);
+        res.json({ success: true });
+    } catch (err) { res.status(500).json({ error: 'Delete user failed' }); }
 });
 
 // 4. Media Upload

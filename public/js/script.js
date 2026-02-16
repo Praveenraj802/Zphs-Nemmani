@@ -383,6 +383,11 @@ window.switchRoom = function (newRoom) {
         if (el) el.remove();
     });
 
+    socket.on('user-deleted', userId => {
+        // Refresh sidebar to remove deleted user
+        loadSidebarUsers();
+    });
+
     function displayMessage(data, myId) {
         if (!data || document.getElementById(`msg-${data._id}`)) return;
         const container = document.getElementById('messages');
