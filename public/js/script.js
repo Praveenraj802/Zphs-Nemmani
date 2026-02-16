@@ -90,6 +90,47 @@ window.searchMessages = function () {
     });
 };
 
+window.leaveChat = async function () {
+    if (!confirm('Are you sure? This will delete your account and history!')) return;
+    const userData = localStorage.getItem('chatUser');
+    if (!userData) return window.location.href = 'index.html';
+    const user = JSON.parse(userData);
+
+    try {
+        await fetch(`/api/users/${user.id}`, { method: 'DELETE' });
+        localStorage.removeItem('chatUser');
+        window.location.href = 'index.html';
+    } catch (e) { alert('Failed to leave'); }
+};
+
+window.clearChat = async function () {
+    if (!confirm('Clear all messages in this room?')) return;
+    const room = 'zphs-global'; // Hardcoded for now as per current setup
+    try {
+        const res = await fetch(`/api/messages/room/${room}`, { method: 'DELETE' });
+        const d = await res.json();
+        if (d.success) {
+            document.getElementById('messages').innerHTML = '';
+            window.closeMenu();
+        }
+    } catch (e) { alert('Clear failed'); }
+};
+
+window.filterChatList = function () {
+    const query = document.getElementById('sidebar-search').value.toLowerCase();
+    const items = document.querySelectorAll('#chat-list .chat-item');
+    items.forEach(item => {
+        const name = item.querySelector('.chat-name').innerText.toLowerCase();
+        item.style.display = name.includes(query) ? 'flex' : 'none';
+    });
+};
+
+window.switchRoom = function (newRoom) {
+    console.log('Switching to room:', newRoom);
+    // Currently only supporting global, but we can refresh messages
+    location.reload();
+};
+
 // --- 2. THE CORE ENGINE ---
 
 (function () {
@@ -488,6 +529,28 @@ window.searchMessages = function () {
         if (activeStream) activeStream.getTracks().forEach(t => t.stop());
         document.getElementById('call-modal').style.display = 'none';
         activeStream = null;
+    };
+
+    window.toggleMute = function () {
+        if (activeStream) {
+            const audioTrack = activeStream.getAudioTracks()[0];
+            if (audioTrack) {
+                audioTrack.enabled = !audioTrack.enabled;
+                const icon = document.querySelector('button[onclick="toggleMute()"] i');
+                icon.className = audioTrack.enabled ? 'fas fa-microphone' : 'fas fa-microphone-slash text-red-500';
+            }
+        }
+    };
+
+    window.toggleVideo = function () {
+        if (activeStream) {
+            const videoTrack = activeStream.getVideoTracks()[0];
+            if (videoTrack) {
+                videoTrack.enabled = !videoTrack.enabled;
+                const icon = document.querySelector('button[onclick="toggleVideo()"] i');
+                icon.className = videoTrack.enabled ? 'fas fa-video' : 'fas fa-video-slash text-red-500';
+            }
+        }
     };
 
     // --- FORM SUBMISSIONS ---
