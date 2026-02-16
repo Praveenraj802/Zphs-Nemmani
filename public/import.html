@@ -1,0 +1,90 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Bulk Import - Zpns Nemmani</title>
+    <link href="https://cdnjs.cloudflare.com/ajax/libs/tailwindcss/2.2.19/tailwind.min.css" rel="stylesheet">
+    <style>
+        body {
+            background: #f3f4f6;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            min-height: 100vh;
+            padding: 20px;
+        }
+    </style>
+</head>
+
+<body>
+    <div class="bg-white p-8 rounded-lg shadow-lg w-full max-w-2xl">
+        <h2 class="text-2xl font-bold mb-4 text-green-700">Bulk Import WhatsApp Numbers</h2>
+        <p class="text-gray-600 mb-6 text-sm">
+            Copy your WhatsApp group member list or chat export and paste it below.
+            The system will automatically find all 10-digit mobile numbers and create accounts for them.
+        </p>
+
+        <textarea id="import-text"
+            class="w-full h-64 p-4 border rounded-lg focus:ring-2 focus:ring-green-500 outline-none mb-4"
+            placeholder="Paste text here... (Example: +91 98765 43210, +91 91234 56789)"></textarea>
+
+        <div id="result" class="mb-4 text-sm font-semibold"></div>
+
+        <div class="flex space-x-4">
+            <button onclick="doImport()" id="import-btn"
+                class="flex-1 bg-green-600 hover:bg-green-700 text-white font-bold py-3 rounded-lg transition">
+                Extract & Import Numbers
+            </button>
+            <a href="../index.html"
+                class="bg-gray-200 hover:bg-gray-300 text-gray-700 font-bold py-3 px-6 rounded-lg transition">
+                Back
+            </a>
+        </div>
+    </div>
+
+    <script>
+        async function doImport() {
+            const text = document.getElementById('import-text').value;
+            const btn = document.getElementById('import-btn');
+            const resultDiv = document.getElementById('result');
+
+            if (!text.trim()) {
+                alert('Please paste some text first.');
+                return;
+            }
+
+            btn.disabled = true;
+            btn.textContent = 'Processing...';
+            resultDiv.innerHTML = '';
+
+            try {
+                const res = await fetch('/api/admin/bulk-import', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ textData: text })
+                });
+
+                const data = await res.json();
+
+                if (data.success) {
+                    resultDiv.className = "text-green-600 mb-4 text-sm font-semibold";
+                    resultDiv.textContent = data.message;
+                    document.getElementById('import-text').value = ''; // Clear box
+                } else {
+                    resultDiv.className = "text-red-600 mb-4 text-sm font-semibold";
+                    resultDiv.textContent = data.error;
+                }
+            } catch (err) {
+                resultDiv.className = "text-red-600 mb-4 text-sm font-semibold";
+                resultDiv.textContent = 'Connection error. Check if the server is running.';
+            } finally {
+                btn.disabled = false;
+                btn.textContent = 'Extract & Import Numbers';
+            }
+        }
+    </script>
+</body>
+
+</html>

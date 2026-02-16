@@ -1,0 +1,256 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Zphs Nemmani</title>
+    <link href="https://cdnjs.cloudflare.com/ajax/libs/tailwindcss/2.2.19/tailwind.min.css" rel="stylesheet">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css">
+    <link rel="stylesheet" href="css/style.css">
+</head>
+
+<body>
+
+    <div class="app-container">
+        <!-- Sidebar -->
+        <div class="sidebar">
+            <div class="sidebar-header">
+                <div class="user-profile">
+                    <img src="https://ui-avatars.com/api/?name=User" class="avatar" id="my-avatar">
+                    <span class="font-bold text-gray-700" id="my-name">Me</span>
+                </div>
+                <div class="sidebar-icons flex items-center space-x-2">
+                    <button id="sidebar-add-btn" onclick="openSingleModal()"
+                        class="bg-green-600 text-white px-2 py-1 rounded text-[10px] font-bold hover:bg-green-700 shadow cursor-pointer"
+                        title="Add New Number">
+                        <i class="fas fa-plus mr-1"></i> ADD
+                    </button>
+                    <button id="sidebar-bulk-btn" onclick="openBulkModal()"
+                        class="bg-blue-600 text-white px-2 py-1 rounded text-[10px] font-bold hover:bg-blue-700 shadow cursor-pointer"
+                        title="Bulk Import">
+                        <i class="fas fa-upload mr-1"></i> BULK
+                    </button>
+                    <i class="fas fa-sign-out-alt text-red-500 cursor-pointer p-1" onclick="leaveChat()"
+                        title="Delete Account & Leave"></i>
+                </div>
+            </div>
+
+            <div class="search-bar">
+                <input type="text" id="sidebar-search" placeholder="Search or start new chat"
+                    oninput="filterChatList()">
+            </div>
+
+            <div class="px-3 py-1 text-[9px] text-gray-400 bg-gray-50 border-b flex justify-between">
+                <span>System Ready</span>
+                <span class="font-bold text-green-600">v12.0</span>
+            </div>
+
+            <div class="chat-list" id="chat-list">
+                <!-- Hardcoded Main Group -->
+                <div class="chat-item active" onclick="switchRoom('zpns-global')">
+                    <img src="https://ui-avatars.com/api/?name=Zpns+Nemmani&background=random" class="avatar">
+                    <div class="chat-info">
+                        <div class="chat-name">Zphs Nemmani (Global)</div>
+                        <div class="chat-last-msg">Click here to chat with everyone!</div>
+                    </div>
+                </div>
+                <!-- Other friends could be listed here -->
+            </div>
+        </div>
+
+        <!-- Main Chat Area -->
+        <div class="chat-area">
+            <div class="chat-header">
+                <div class="header-info">
+                    <img src="https://ui-avatars.com/api/?name=Zpns+Nemmani&background=random" class="avatar">
+                    <div class="header-text">
+                        <div class="header-name">Zphs Nemmani</div>
+                        <div class="header-status">online</div>
+                    </div>
+                </div>
+                <div class="header-icons flex items-center relative z-[60]">
+                    <div id="msg-search-container"
+                        class="hidden absolute right-16 top-0 h-full flex items-center bg-f0f2f5 px-2">
+                        <input type="text" id="msg-search-input" placeholder="Search... "
+                            class="rounded-full px-4 py-1 text-sm border-none outline-none w-48 shadow-inner"
+                            oninput="searchMessages()">
+                    </div>
+                    <i class="fas fa-video hover:text-green-600 p-2 cursor-pointer" onclick="startCall('video')"
+                        title="Video Call"></i>
+                    <i class="fas fa-phone hover:text-green-600 p-2 cursor-pointer" onclick="startCall('audio')"
+                        title="Voice Call"></i>
+                    <i class="fas fa-search hover:text-green-600 p-2 cursor-pointer" onclick="toggleSearch(event)"
+                        title="Search Messages"></i>
+
+                    <div class="relative inline-block text-left">
+                        <i class="fas fa-ellipsis-v cursor-pointer p-4 hover:bg-gray-200 rounded-full transition-all text-xl"
+                            onclick="toggleMenu(event)" id="menu-dots" title="Menu"></i>
+
+                        <!-- Dropdown Menu -->
+                        <div id="header-menu"
+                            class="hidden absolute right-0 mt-2 w-48 bg-white border border-gray-200 rounded-lg shadow-2xl z-[9999] py-2 overflow-hidden transform origin-top-right">
+                            <div class="px-4 py-3 border-bottom border-gray-100 bg-gray-50 flex items-center">
+                                <i class="fas fa-tools text-green-600 mr-2"></i>
+                                <span class="font-bold text-xs uppercase tracking-wider text-gray-500">Admin
+                                    Tools</span>
+                            </div>
+                            <div class="px-4 py-3 hover:bg-green-50 cursor-pointer flex items-center transition-colors group"
+                                onclick="openSingleModal()">
+                                <i
+                                    class="fas fa-user-plus text-green-600 mr-3 group-hover:scale-110 transition-transform"></i>
+                                <span class="text-sm font-semibold text-gray-700">Add Number</span>
+                            </div>
+                            <div class="px-4 py-3 hover:bg-green-50 cursor-pointer flex items-center transition-colors group"
+                                onclick="openBulkModal()">
+                                <i
+                                    class="fas fa-users-cog text-green-600 mr-3 group-hover:scale-110 transition-transform"></i>
+                                <span class="text-sm font-semibold text-gray-700">Bulk Import</span>
+                            </div>
+                            <div class="h-px bg-gray-100 my-1"></div>
+                            <div class="px-4 py-3 hover:bg-red-50 cursor-pointer flex items-center transition-colors group text-red-600"
+                                onclick="clearChat()">
+                                <i class="fas fa-broom mr-3 group-hover:rotate-12 transition-transform"></i>
+                                <span class="text-sm font-semibold">Clear Chat History</span>
+                            </div>
+                            <div class="px-4 py-3 hover:bg-red-50 cursor-pointer flex items-center transition-colors group text-red-600"
+                                onclick="leaveChat()">
+                                <i class="fas fa-trash-alt mr-3 group-hover:scale-110 transition-transform"></i>
+                                <span class="text-sm font-semibold">Delete My Account</span>
+                            </div>
+                            <div class="h-px bg-gray-100 my-1"></div>
+                            <div class="px-4 py-3 hover:bg-gray-100 cursor-pointer flex items-center transition-colors group"
+                                onclick="location.reload()">
+                                <i
+                                    class="fas fa-sync-alt text-gray-400 mr-3 group-hover:rotate-180 duration-500 transition-transform"></i>
+                                <span class="text-sm font-semibold text-gray-600">Refresh Page</span>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <div class="messages-container" id="messages">
+                <!-- Messages will appear here -->
+            </div>
+
+            <div class="chat-input-area">
+                <div id="emoji-panel"
+                    class="hidden absolute bottom-20 left-4 bg-white border rounded-lg shadow-xl p-3 grid grid-cols-6 gap-2 text-xl z-50 overflow-y-auto max-h-48"
+                    style="width: 250px;">
+                    <span class="cursor-pointer hover:bg-gray-100 p-1">😀</span>
+                    <span class="cursor-pointer hover:bg-gray-100 p-1">😂</span>
+                    <span class="cursor-pointer hover:bg-gray-100 p-1">😍</span>
+                    <span class="cursor-pointer hover:bg-gray-100 p-1">🤣</span>
+                    <span class="cursor-pointer hover:bg-gray-100 p-1">🥰</span>
+                    <span class="cursor-pointer hover:bg-gray-100 p-1">😊</span>
+                    <span class="cursor-pointer hover:bg-gray-100 p-1">🤩</span>
+                    <span class="cursor-pointer hover:bg-gray-100 p-1">😇</span>
+                    <span class="cursor-pointer hover:bg-gray-100 p-1">🤔</span>
+                    <span class="cursor-pointer hover:bg-gray-100 p-1">😎</span>
+                    <span class="cursor-pointer hover:bg-gray-100 p-1">👍</span>
+                    <span class="cursor-pointer hover:bg-gray-100 p-1">❤️</span>
+                    <span class="cursor-pointer hover:bg-gray-100 p-1">🙌</span>
+                    <span class="cursor-pointer hover:bg-gray-100 p-1">🔥</span>
+                    <span class="cursor-pointer hover:bg-gray-100 p-1">✨</span>
+                    <span class="cursor-pointer hover:bg-gray-100 p-1">🙏</span>
+                    <span class="cursor-pointer hover:bg-gray-100 p-1">🎉</span>
+                    <span class="cursor-pointer hover:bg-gray-100 p-1">💯</span>
+                </div>
+                <i class="far fa-smile text-2xl text-gray-500 mr-4 cursor-pointer" onclick="toggleEmojiPanel()"></i>
+                <i class="fas fa-paperclip text-2xl text-gray-500 mr-4 cursor-pointer"
+                    onclick="document.getElementById('file-input').click()"></i>
+                <input type="file" id="file-input" hidden onchange="uploadFile()">
+
+                <input type="text" id="msg-input" placeholder="Type a message" onkeypress="handleTyping(event)">
+
+                <i id="mic-btn" class="fas fa-microphone text-2xl text-gray-500 ml-4 cursor-pointer"></i>
+                <i id="send-btn" class="fas fa-paper-plane text-2xl text-green-600 ml-4 cursor-pointer hidden"
+                    onclick="sendMessage()"></i>
+            </div>
+        </div>
+    </div>
+
+    <!-- Video Call Modal -->
+    <div id="call-modal" style="display: none;"
+        class="fixed inset-0 bg-black bg-opacity-90 flex items-center justify-center z-[10000]" onclick="endCall()">
+        <div class="call-content rounded-lg shadow-2xl bg-gray-900 w-[95%] max-w-4xl h-[80vh] overflow-hidden relative"
+            onclick="event.stopPropagation()">
+            <div id="video-grid" class="flex flex-col md:flex-row h-full w-full bg-black">
+                <video id="my-video" muted playsinline class="w-full h-full object-cover"></video>
+                <video id="remote-video" playsinline class="w-full h-full object-cover"></video>
+            </div>
+            <div class="call-controls absolute bottom-4 w-full flex justify-center space-x-4">
+                <button class="bg-red-600 p-3 rounded-full text-white" onclick="endCall()"><i
+                        class="fas fa-phone-slash"></i></button>
+                <button class="bg-gray-700 p-3 rounded-full text-white" onclick="toggleMute()"><i
+                        class="fas fa-microphone"></i></button>
+                <button class="bg-gray-700 p-3 rounded-full text-white" onclick="toggleVideo()"><i
+                        class="fas fa-video"></i></button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Single Add User Modal (Moved to Bottom) -->
+    <div id="single-modal" style="display: none; backdrop-filter: blur(8px);"
+        class="fixed inset-0 bg-black bg-opacity-60 flex items-center justify-center z-[11000]"
+        onclick="closeSingleModal()">
+        <div class="bg-white rounded-2xl p-8 w-[350px] shadow-[0_20px_50px_rgba(0,0,0,0.3)] relative border border-gray-100"
+            onclick="event.stopPropagation()">
+            <h3 class="text-2xl font-bold mb-6 text-green-700 flex items-center">
+                <i class="fas fa-user-plus mr-3"></i> Add Member
+            </h3>
+            <div class="space-y-5">
+                <div>
+                    <label class="text-[10px] uppercase tracking-wider font-bold text-gray-400 mb-1 block">Full
+                        Name</label>
+                    <input type="text" id="single-name" placeholder="Ex: Praveen Kumar"
+                        class="w-full border-2 border-gray-100 p-3 rounded-xl outline-none focus:border-green-500 transition-all text-black font-medium">
+                </div>
+                <div>
+                    <label class="text-[10px] uppercase tracking-wider font-bold text-gray-400 mb-1 block">Mobile
+                        Number</label>
+                    <input type="tel" id="single-phone" placeholder="10-digit number" maxlength="10"
+                        class="w-full border-2 border-gray-100 p-3 rounded-xl outline-none focus:border-green-500 transition-all text-black font-medium">
+                </div>
+            </div>
+            <div class="flex flex-col space-y-3 mt-8">
+                <button onclick="submitSingleAdd()"
+                    class="w-full py-4 bg-green-600 text-white rounded-xl hover:bg-green-700 font-bold shadow-lg transform active:scale-95 transition-all text-lg">Add
+                    User</button>
+                <button onclick="closeSingleModal()"
+                    class="w-full py-2 text-gray-400 hover:text-gray-600 text-sm font-semibold">Maybe Later</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Bulk Import Modal (Moved to Bottom) -->
+    <div id="bulk-modal" style="display: none; backdrop-filter: blur(8px);"
+        class="fixed inset-0 bg-black bg-opacity-60 flex items-center justify-center z-[11000]"
+        onclick="closeBulkModal()">
+        <div class="bg-white rounded-2xl p-8 w-[450px] shadow-[0_20px_50px_rgba(0,0,0,0.3)] relative border border-gray-100"
+            onclick="event.stopPropagation()">
+            <h3 class="text-2xl font-bold mb-4 text-green-700 flex items-center">
+                <i class="fas fa-users-cog mr-3"></i> Bulk Import
+            </h3>
+            <p class="text-xs text-gray-400 mb-4 leading-relaxed">Paste your text containing mobile numbers. We will
+                extract all valid 10-digit numbers for you.</p>
+            <textarea id="bulk-text" rows="8"
+                class="w-full border-2 border-gray-100 p-4 rounded-xl text-sm mb-6 outline-none focus:border-green-500 transition-all text-black font-mono"
+                placeholder="Paste here..."></textarea>
+            <div class="flex flex-col space-y-3">
+                <button onclick="submitBulkImport()"
+                    class="w-full py-4 bg-blue-600 text-white rounded-xl hover:bg-blue-700 font-bold shadow-lg transform active:scale-95 transition-all text-lg">Import
+                    Everything</button>
+                <button onclick="closeBulkModal()"
+                    class="w-full py-2 text-gray-400 hover:text-gray-600 text-sm font-semibold">Cancel</button>
+            </div>
+        </div>
+    </div>
+
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/socket.io/4.7.4/socket.io.js"></script>
+    <script src="https://unpkg.com/peerjs@1.5.2/dist/peerjs.min.js"></script>
+    <script src="js/script.js?v=140"></script>
+</body>
+
+</html>
