@@ -1,11 +1,12 @@
 /* 
-  Zphs Nemmani Chat System v13.0 - THE GLOBAL LINK FIX
-  - Fully Operational Video/Audio Calls
-  - Active Message Search Engine
-  - Optimized for Render.com Deployment
+  Zphs Nemmani Chat System v14.0 - THE PRECISE REPAIR
+  - Real-time Sidebar User List
+  - Fixed 'Add User' with Button Feedback
+  - Enhanced Search Logic
+  - Optimized for Render.com SSL
 */
 
-console.log('Zphs Chat Engine v13.0 Starting...');
+console.log('Zphs Chat Engine v14.0 Starting...');
 
 // --- 1. GLOBAL UI CONTROLS ---
 
@@ -46,7 +47,7 @@ window.toggleEmojiPanel = function (e) {
     if (el) el.classList.toggle('hidden');
 };
 
-// --- MESSAGE SEARCH LOGIC ---
+// --- SEARCH ENGINE ---
 window.toggleSearch = function (e) {
     if (e) e.stopPropagation();
     const container = document.getElementById('msg-search-container');
@@ -65,11 +66,14 @@ window.searchMessages = function () {
         const text = msg.innerText.toLowerCase();
         if (text.includes(query)) {
             msg.style.display = 'block';
-            msg.classList.add('bg-yellow-100'); // Highlight matches
+            msg.classList.add('bg-yellow-50');
         } else {
             msg.style.display = 'none';
         }
-        if (!query) msg.classList.remove('bg-yellow-100');
+        if (!query) {
+            msg.style.display = 'block';
+            msg.classList.remove('bg-yellow-50');
+        }
     });
 };
 
@@ -82,9 +86,9 @@ window.searchMessages = function () {
     const user = JSON.parse(userData);
     const room = 'zphs-global';
 
-    // PeerJS Setup
+    // PeerJS - Precise for Render HTTPS
     const peer = new Peer(undefined, {
-        host: '/',
+        host: window.location.hostname,
         secure: true,
         port: 443,
         path: '/peerjs'
@@ -93,7 +97,7 @@ window.searchMessages = function () {
     let activeStream = null;
 
     document.addEventListener('DOMContentLoaded', () => {
-        console.log('DOM Ready v13.0');
+        console.log('DOM Ready v14.0');
 
         // Setup User Info
         document.getElementById('my-name').textContent = user.name;
@@ -108,6 +112,9 @@ window.searchMessages = function () {
             scrollDown();
         });
 
+        // Load Sidebar Users
+        loadSidebarUsers();
+
         // Emojis
         document.querySelectorAll('#emoji-panel span').forEach(span => {
             span.onclick = () => {
@@ -115,10 +122,11 @@ window.searchMessages = function () {
                 input.value += span.innerText;
                 input.focus();
                 document.getElementById('emoji-panel').classList.add('hidden');
+                toggleSendBtn();
             };
         });
 
-        // Mic Button (Voice Messaging)
+        // Mic Button
         let mediaRecorder;
         let audioChunks = [];
         const micBtn = document.getElementById('mic-btn');
@@ -149,6 +157,34 @@ window.searchMessages = function () {
         }
     });
 
+    async function loadSidebarUsers() {
+        try {
+            const res = await fetch('/api/users');
+            const users = await res.json();
+            const list = document.getElementById('chat-list');
+            if (!list) return;
+
+            // Keep Global Item
+            const globalHtml = list.firstElementChild.outerHTML;
+            list.innerHTML = globalHtml;
+
+            users.forEach(u => {
+                if (u._id === user.id) return; // Skip me
+                const item = document.createElement('div');
+                item.className = 'chat-item';
+                item.onclick = () => alert('Direct messaging coming soon! Use Global for now.');
+                item.innerHTML = `
+                    <img src="https://ui-avatars.com/api/?name=${u.displayName}\u0026background=random" class="avatar">
+                    <div class="chat-info">
+                        <div class="chat-name">${u.displayName}</div>
+                        <div class="chat-last-msg">${u.phone.slice(0, 3)}****${u.phone.slice(-3)}</div>
+                    </div>
+                `;
+                list.appendChild(item);
+            });
+        } catch (e) { console.error('Failed to load users'); }
+    }
+
     // --- CALLING ENGINE ---
     window.startCall = function (type) {
         console.log('Initiating Call:', type);
@@ -158,10 +194,12 @@ window.searchMessages = function () {
             document.getElementById('my-video').srcObject = stream;
             document.getElementById('my-video').play();
             socket.emit('call-user', { room: room, signalData: peer.id, from: user.id, name: user.name });
+            alert('Calling Zphs Global Room...');
         }).catch(err => alert('Call failed: Camera/Mic permissions required.'));
     };
 
     socket.on('call-made', data => {
+        if (data.from === user.id) return;
         if (confirm(`${data.name} is calling... Answer?`)) {
             navigator.mediaDevices.getUserMedia({ video: true, audio: true }).then(stream => {
                 activeStream = stream;
@@ -184,12 +222,28 @@ window.searchMessages = function () {
     };
 
     // --- MESSAGING ---
+    const msgInput = document.getElementById('msg-input');
+    const sendBtn = document.getElementById('send-btn');
+    const micBtnIcon = document.getElementById('mic-btn');
+
+    function toggleSendBtn() {
+        if (!msgInput || !sendBtn || !micBtnIcon) return;
+        if (msgInput.value.trim().length \u003e 0) {
+            sendBtn.classList.remove('hidden');
+            micBtnIcon.classList.add('hidden');
+        } else {
+            sendBtn.classList.add('hidden');
+            micBtnIcon.classList.remove('hidden');
+        }
+    }
+    if (msgInput) msgInput.oninput = toggleSendBtn;
+
     window.sendMessage = function () {
-        const input = document.getElementById('msg-input');
-        const content = input.value.trim();
+        const content = msgInput.value.trim();
         if (content) {
             socket.emit('send-message', { senderId: user.id, content, room });
-            input.value = '';
+            msgInput.value = '';
+            toggleSendBtn();
         }
     };
 
@@ -207,17 +261,18 @@ window.searchMessages = function () {
         const container = document.getElementById('messages');
         if (!container) return;
 
-        const isMe = (data.sender && (data.sender._id === myId || data.sender === myId));
+        const isMe = (data.sender \u0026\u0026 (data.sender._id === myId || data.sender === myId));
         const div = document.createElement('div');
         div.id = `msg-${data._id}`;
         div.className = `message mb-4 p-3 rounded-lg max-w-[75%] shadow-sm ${isMe ? 'sent bg-green-200 ml-auto' : 'received bg-white mr-auto'}`;
 
         let html = '';
-        if (data.content) html += `<p class="text-sm">${data.content}</p>`;
-        if (data.mediaType === 'audio') html += `<audio controls src="${data.media}" class="w-48 mt-2 h-8"></audio>`;
+        if (data.sender \u0026\u0026!isMe) html += `\u003cdiv class="text-[10px] font-bold text-green-600 mb-1"\u003e${data.sender.displayName}\u003c/div\u003e`;
+        if (data.content) html += `\u003cp class="text-sm text-black"\u003e${data.content}\u003c/p\u003e`;
+        if (data.mediaType === 'audio') html += `\u003caudio controls src="${data.media}" class="w-48 mt-2 h-8"\u003e\u003c/audio\u003e`;
 
         const time = new Date(data.timestamp).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
-        html += `<div class="text-[9px] text-gray-500 text-right mt-1">${time}</div>`;
+        html += `\u003cdiv class="text-[9px] text-gray-500 text-right mt-1"\u003e${time}\u003c/div\u003e`;
 
         div.innerHTML = html;
         container.appendChild(div);
@@ -228,31 +283,58 @@ window.searchMessages = function () {
         if (c) c.scrollTop = c.scrollHeight;
     }
 
-    // --- ADMIN ---
+    // --- ADMIN REPAIR ---
     window.submitSingleAdd = async function () {
-        const name = document.getElementById('single-name').value.trim();
-        const phone = document.getElementById('single-phone').value.trim();
-        if (!name || phone.length < 10) return alert('Name and 10-digit Phone required');
-        const res = await fetch('/api/users/add', {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({ name, phone })
-        });
-        const d = await res.json();
-        if (d.success) { alert('User added!'); window.closeSingleModal(); }
-        else alert(d.error);
+        const nameEl = document.getElementById('single-name');
+        const phoneEl = document.getElementById('single-phone');
+        const btn = document.querySelector('#single-modal button[onclick*="submit"]');
+
+        const name = nameEl.value.trim();
+        const phone = phoneEl.value.trim();
+
+        if (!name || phone.length \u003c 10) return alert('Name and 10-digit Phone required');
+
+        try {
+            if (btn) { btn.innerText = 'SAVING...'; btn.disabled = true; }
+            const res = await fetch('/api/users/add', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ name, phone })
+            });
+            const d = await res.json();
+            if (d.success) {
+                alert('SUCCESS! User added.');
+                nameEl.value = '';
+                phoneEl.value = '';
+                window.closeSingleModal();
+                loadSidebarUsers(); // Refresh sidebar!
+            } else {
+                alert(d.error || 'Server error');
+            }
+        } catch (e) {
+            alert('Network Error: Check your connection');
+        } finally {
+            if (btn) { btn.innerText = 'Add User'; btn.disabled = false; }
+        }
     };
 
     window.submitBulkImport = async function () {
         const textData = document.getElementById('bulk-text').value;
-        const res = await fetch('/api/admin/bulk-import', {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({ textData })
-        });
-        const d = await res.json();
-        alert(d.message);
-        window.closeBulkModal();
+        const btn = document.querySelector('#bulk-modal button[onclick*="submit"]');
+
+        try {
+            if (btn) { btn.innerText = 'IMPORTING...'; btn.disabled = true; }
+            const res = await fetch('/api/admin/bulk-import', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ textData })
+            });
+            const d = await res.json();
+            alert(d.message);
+            window.closeBulkModal();
+            loadSidebarUsers();
+        } catch (e) { alert('Bulk error'); }
+        finally { if (btn) { btn.innerText = 'Import Everything'; btn.disabled = false; } }
     };
 
 })();

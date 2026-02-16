@@ -120,6 +120,14 @@ app.post('/api/upload', upload.single('media'), (req, res) => {
     res.json({ url: `/uploads/${req.file.filename}`, type });
 });
 
+// 4. User List
+app.get('/api/users', async (req, res) => {
+    try {
+        const users = await User.find().sort({ createdAt: -1 });
+        res.json(users);
+    } catch (err) { res.status(500).json({ error: 'Failed to fetch users' }); }
+});
+
 // --- Health Check ---
 app.get('/health', (req, res) => res.json({ status: 'ok', serverTime: new Date() }));
 
