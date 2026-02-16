@@ -115,8 +115,12 @@ app.delete('/api/users/:id', async (req, res) => {
 // 4. Media Upload
 app.post('/api/upload', upload.single('media'), (req, res) => {
     if (!req.file) return res.status(400).json({ error: 'No file' });
-    const type = req.file.mimetype.startsWith('image/') ? 'image' :
-        req.file.mimetype.startsWith('video/') ? 'video' : 'audio';
+    const mime = req.file.mimetype;
+    let type = 'file';
+    if (mime.startsWith('image/')) type = 'image';
+    else if (mime.startsWith('video/')) type = 'video';
+    else if (mime.startsWith('audio/')) type = 'audio';
+
     res.json({ url: `/uploads/${req.file.filename}`, type });
 });
 

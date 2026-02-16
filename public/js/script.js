@@ -144,6 +144,7 @@ window.searchMessages = function () {
 
         // Initialize Chat Controls
         setupMessaging();
+        setupMediaHandlers();
     });
 
     async function fetchMessages() {
@@ -188,6 +189,117 @@ window.searchMessages = function () {
     function setupMessaging() {
         const input = document.getElementById('msg-input');
         if (input) input.oninput = toggleSendBtn;
+
+        const micBtn = document.getElementById('mic-btn');
+        if (micBtn) micBtn.onclick = toggleRecording;
+    }
+
+    function setupMediaHandlers() {
+        window.uploadFile = async function () {
+            const fileInput = document.getElementById('file-input');
+            if (!fileInput || !fileInput.files.length) return;
+
+            const file = fileInput.files[0];
+            const formData = new FormData();
+            formData.append('media', file);
+
+            try {
+                const res = await fetch('/api/upload', {
+                    method: 'POST',
+                    body: formData
+                });
+                const data = await res.json();
+                if (data.url) {
+                    socket.emit('send-message', {
+                        senderId: user.id,
+                        content: '',
+                        media: data.url,
+                        mediaType: data.type,
+                        room
+                    });
+                }
+            } catch (e) {
+                console.error('Upload failed:', e);
+                alert('File upload failed.');
+            }
+        };
+    }
+
+    let mediaRecorder;
+    let audioChunks = [];
+    let isRecording = false;
+    let recordingTimer;
+    let startTime;
+
+    async function toggleRecording() {
+        const micBtn = document.getElementById('mic-btn');
+        const input = document.getElementById('msg-input');
+
+        if (!isRecording) {
+            try {
+                const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
+
+                // Determine supported MIME type
+                const mimeType = MediaRecorder.isTypeSupported('audio/webm') ? 'audio/webm' :
+                    MediaRecorder.isTypeSupported('audio/mp4') ? 'audio/mp4' : 'audio/ogg';
+
+                mediaRecorder = new MediaRecorder(stream, { mimeType });
+                audioChunks = [];
+
+                mediaRecorder.ondataavailable = e => {
+                    if (e.data.size > 0) audioChunks.push(e.data);
+                };
+
+                mediaRecorder.onstop = async () => {
+                    if (audioChunks.length === 0) return;
+
+                    const audioBlob = new Blob(audioChunks, { type: mimeType });
+                    const extension = mimeType.split('/')[1].split(';')[0];
+                    const file = new File([audioBlob], `voice-${Date.now()}.${extension}`, { type: mimeType });
+
+                    const formData = new FormData();
+                    formData.append('media', file);
+
+                    try {
+                        const res = await fetch('/api/upload', { method: 'POST', body: formData });
+                        const data = await res.json();
+                        if (data.url) {
+                            socket.emit('send-message', {
+                                senderId: user.id,
+                                content: '',
+                                media: data.url,
+                                mediaType: 'audio',
+                                room
+                            });
+                        }
+                    } catch (e) {
+                        console.error('Voice upload failed', e);
+                        alert('Could not send voice message. Server error.');
+                    }
+
+                    stream.getTracks().forEach(t => t.stop());
+                };
+
+                mediaRecorder.start();
+                isRecording = true;
+                startTime = Date.now();
+                micBtn.classList.add('text-red-500', 'animate-pulse');
+                if (input) input.placeholder = "Recording... Click mic to stop";
+
+                // Safety timeout (max 2 mins)
+                recordingTimer = setTimeout(() => { if (isRecording) toggleRecording(); }, 120000);
+
+            } catch (e) {
+                console.error('Mic error:', e);
+                alert('Microphone error: ' + (e.name === 'NotAllowedError' ? 'Permission Denied' : e.message));
+            }
+        } else {
+            clearTimeout(recordingTimer);
+            if (mediaRecorder && mediaRecorder.state !== 'inactive') mediaRecorder.stop();
+            isRecording = false;
+            micBtn.classList.remove('text-red-500', 'animate-pulse');
+            if (input) input.placeholder = "Type a message";
+        }
     }
 
     function toggleSendBtn() {
@@ -225,24 +337,55 @@ window.searchMessages = function () {
         scrollDown();
     });
 
+    socket.on('message-deleted', msgId => {
+        const el = document.getElementById(`msg-${msgId}`);
+        if (el) el.remove();
+    });
+
     function displayMessage(data, myId) {
         if (!data || document.getElementById(`msg-${data._id}`)) return;
         const container = document.getElementById('messages');
         if (!container) return;
 
         const isMe = (data.sender && (data.sender._id === myId || data.sender === myId));
+        const senderId = data.sender?._id || data.sender;
+        const senderName = data.sender?.displayName || (isMe ? user.name : 'Friend');
+
         const div = document.createElement('div');
         div.id = `msg-${data._id}`;
         div.className = `message mb-4 p-3 rounded-lg max-w-[75%] shadow-sm ${isMe ? 'sent bg-green-200 ml-auto' : 'received bg-white mr-auto text-black'}`;
 
         let html = '';
+        // Dropdown Toggle Button
+        html += `<div class="msg-options-btn" onclick="toggleMsgDropdown(event, '${data._id}')">
+                    <i class="fas fa-chevron-down"></i>
+                 </div>`;
+
+        // Dropdown Menu
+        html += `<div id="dropdown-${data._id}" class="msg-dropdown">
+                    <div onclick="copyMsg('${data._id}', '${data.content || ''}', '${data.media || ''}')"><i class="fas fa-copy"></i> Copy</div>
+                    <div onclick="infoMsg('${data._id}', '${senderName}', '${data.timestamp}')"><i class="fas fa-info-circle"></i> Info</div>
+                    ${isMe ? `<div onclick="deleteMsg('${data._id}')" class="delete-opt"><i class="fas fa-trash-alt"></i> Delete</div>` : ''}
+                 </div>`;
+
         if (data.sender && !isMe) {
-            const name = data.sender.displayName || 'Friend';
-            html += `<div class="text-[10px] font-bold text-green-700 mb-1">${name}</div>`;
+            html += `<div class="text-[10px] font-bold text-green-700 mb-1">${senderName}</div>`;
         }
 
         if (data.content) html += `<p class="text-sm">${data.content}</p>`;
         if (data.mediaType === 'audio') html += `<audio controls src="${data.media}" class="w-48 mt-2 h-8"></audio>`;
+        if (data.mediaType === 'image') html += `<img src="${data.media}" class="w-full max-w-xs mt-2 rounded-lg cursor-pointer" onclick="window.open('${data.media}', '_blank')">`;
+        if (data.mediaType === 'video') html += `<video controls src="${data.media}" class="w-full max-w-xs mt-2 rounded-lg"></video>`;
+        if (data.mediaType === 'file') {
+            const fileName = data.media.split('-').slice(1).join('-');
+            html += `<div class="mt-2 p-2 bg-gray-50 rounded border flex items-center gap-3">
+                        <i class="fas fa-file-alt text-xl text-blue-500"></i>
+                        <div class="flex-1 overflow-hidden">
+                            <div class="text-xs font-bold truncate">${fileName}</div>
+                            <a href="${data.media}" download class="text-[10px] text-blue-600 hover:underline">Download File</a>
+                        </div>
+                     </div>`;
+        }
 
         const time = new Date(data.timestamp).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
         html += `<div class="text-[9px] text-gray-400 text-right mt-1">${time}</div>`;
@@ -255,6 +398,60 @@ window.searchMessages = function () {
         const c = document.getElementById('messages');
         if (c) c.scrollTop = c.scrollHeight;
     }
+
+    // --- MESSAGE OPTIONS ---
+    window.toggleMsgDropdown = function (e, msgId) {
+        e.stopPropagation();
+        // Close all other dropdowns
+        document.querySelectorAll('.msg-dropdown').forEach(d => {
+            if (d.id !== `dropdown-${msgId}`) d.classList.remove('show');
+        });
+        const d = document.getElementById(`dropdown-${msgId}`);
+        if (d) d.classList.toggle('show');
+    };
+
+    window.copyMsg = function (msgId, content, mediaUrl) {
+        let text = content || "";
+        if (mediaUrl) {
+            const fullUrl = window.location.origin + mediaUrl;
+            text = text ? `${text}\nLink: ${fullUrl}` : fullUrl;
+        }
+
+        navigator.clipboard.writeText(text).then(() => {
+            const btn = document.querySelector(`#dropdown-${msgId} div:first-child`);
+            const original = btn.innerHTML;
+            btn.innerHTML = `<i class="fas fa-check text-green-500"></i> Copied!`;
+            setTimeout(() => {
+                btn.innerHTML = original;
+                document.getElementById(`dropdown-${msgId}`).classList.remove('show');
+            }, 1000);
+        });
+    };
+
+    window.deleteMsg = async function (msgId) {
+        if (!confirm('Are you sure you want to delete this message?')) return;
+        try {
+            const res = await fetch(`/api/messages/${msgId}`, { method: 'DELETE' });
+            const data = await res.json();
+            if (data.success) {
+                const el = document.getElementById(`msg-${msgId}`);
+                if (el) el.remove();
+            }
+        } catch (e) {
+            console.error('Delete failed', e);
+        }
+    };
+
+    window.infoMsg = function (msgId, senderName, timestamp) {
+        const time = new Date(timestamp).toLocaleString();
+        alert(`Message Info:\nSender: ${senderName}\nTime: ${time}\nID: ${msgId}`);
+        document.getElementById(`dropdown-${msgId}`).classList.remove('show');
+    };
+
+    // Close dropdowns on document click
+    document.addEventListener('click', () => {
+        document.querySelectorAll('.msg-dropdown').forEach(d => d.classList.remove('show'));
+    });
 
     // --- CALLS ---
     window.startCall = function (type) {
